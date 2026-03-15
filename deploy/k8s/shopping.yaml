@@ -1,0 +1,248 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopping
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopping-config
+  namespace: shopping
+data:
+  MYSQL_HOST: "mysql-service"
+  MYSQL_PORT: "3306"
+  MYSQL_USER: "root"
+  MYSQL_PASSWORD: "root"
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  NACOS_HOST: "nacos-service"
+  NACOS_PORT: "8848"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopping-gateway
+  namespace: shopping
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopping-gateway
+  template:
+    metadata:
+      labels:
+        app: shopping-gateway
+    spec:
+      containers:
+      - name: shopping-gateway
+        image: shopping/gateway:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopping-gateway
+  namespace: shopping
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: shopping-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopping-user
+  namespace: shopping
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopping-user
+  template:
+    metadata:
+      labels:
+        app: shopping-user
+    spec:
+      containers:
+      - name: shopping-user
+        image: shopping/user:latest
+        ports:
+        - containerPort: 8081
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopping-user
+  namespace: shopping
+spec:
+  ports:
+  - port: 8081
+    targetPort: 8081
+  selector:
+    app: shopping-user
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopping-product
+  namespace: shopping
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopping-product
+  template:
+    metadata:
+      labels:
+        app: shopping-product
+    spec:
+      containers:
+      - name: shopping-product
+        image: shopping/product:latest
+        ports:
+        - containerPort: 8082
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopping-product
+  namespace: shopping
+spec:
+  ports:
+  - port: 8082
+    targetPort: 8082
+  selector:
+    app: shopping-product
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopping-order
+  namespace: shopping
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shopping-order
+  template:
+    metadata:
+      labels:
+        app: shopping-order
+    spec:
+      containers:
+      - name: shopping-order
+        image: shopping/order:latest
+        ports:
+        - containerPort: 8083
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8083
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8083
+          initialDelaySeconds: 30
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopping-order
+  namespace: shopping
+spec:
+  ports:
+  - port: 8083
+    targetPort: 8083
+  selector:
+    app: shopping-order
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shopping-ingress
+  namespace: shopping
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: shopping.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: shopping-gateway
+            port:
+              number: 80
